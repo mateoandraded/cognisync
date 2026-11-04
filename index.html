@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CogniSync, prototipo</title>
+<meta name="description" content="Prototipo navegable de CogniSync: aplicación web y móvil para clínicas de salud mental.">
+<style>
+@import url("./tokens.css");
+@import url("./base.css");
+body { display: grid; place-items: center; min-height: 100vh; padding: var(--space-lg); }
+main { width: 100%; max-width: 420px; display: grid; gap: var(--space-md); }
+h1 { font-size: var(--text-2xl); font-weight: 600; }
+p { color: var(--color-muted); }
+a.card { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md) var(--space-lg); background: var(--color-surface); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-card); color: var(--color-ink); text-decoration: none; font-weight: 600; transition: border-color var(--dur-micro) var(--ease-out); }
+a.card:hover { border-color: var(--color-accent); }
+a.card:active { background: var(--color-paper-2); }
+svg { width: 24px; height: 24px; fill: none; stroke: var(--color-accent); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+small { display: block; font-weight: 400; color: var(--color-muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>CogniSync</h1>
+  <p>Prototipo navegable. Datos ficticios.</p>
+  <a class="card" href="web.html"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>App web<small>Terapeuta y administrador</small></span></a>
+  <a class="card" href="mobile.html"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg><span>App móvil<small>Mejor en el celular</small></span></a>
+</main>
+</body>
+</html>

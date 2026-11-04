@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CogniSync, prototipo</title>
+<meta name="description" content="Prototipo navegable de CogniSync, notas clínicas asistidas para terapeutas.">
+<style>
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: custom · redesign: full
+ * paper: oklch(98.6% 0.004 95) · accent: oklch(44% 0.075 190) · display: Segoe UI · body: Segoe UI
+ * nav: top bar, three destinations · signature: the note beside its original text · states: error, empty, draft, approved
+ * axes: light/grotesk-sans/cool · posture: workbench · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H5 E4 S4 R5 V3 · weakest: V, a familiar clinical shell; kept it familiar on purpose because the tool must disappear into the session */
+@import url("./tokens.css");
+@import url("./base.css");
+
+body { font-size: var(--text-sm); line-height: 1.5; }
+.screen { display: none; min-height: 100vh; }
+.screen.on { display: block; }
+
+/* Barra superior */
+.bar { display: flex; align-items: center; gap: var(--space-lg); height: 56px; padding-inline: var(--gutter); background: var(--color-surface); border-bottom: var(--rule-hair) solid var(--color-rule); }
+.mark { font-family: var(--font-display); font-weight: 600; font-size: var(--text-md); color: var(--color-ink); text-decoration: none; }
+.nav { display: flex; gap: var(--space-2xs); flex: 1; }
+.nav a { display: inline-flex; align-items: center; gap: var(--space-xs); height: 32px; padding-inline: var(--space-sm); border-radius: var(--radius-control); color: var(--color-ink-2); text-decoration: none; }
+.nav a:hover { background: var(--color-paper-2); color: var(--color-ink); }
+.nav a:active { background: var(--color-paper-3); }
+.nav a[aria-current] { background: var(--color-accent-soft); color: var(--color-accent); font-weight: 600; }
+.avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.avatar { overflow: hidden; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-pill); background: var(--color-paper-3); color: var(--color-ink-2); font-size: var(--text-xs); font-weight: 600; flex-shrink: 0; }
+.icon-link { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-control); color: var(--color-muted); }
+.icon-link:hover { background: var(--color-paper-2); color: var(--color-ink); }
+
+.main { max-width: var(--container); margin-inline: auto; padding: var(--space-xl) var(--gutter); }
+.head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-lg); }
+.head-title { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; min-width: 0; }
+h1 { font-size: var(--text-xl); font-weight: 600; letter-spacing: var(--tracking-display); color: var(--color-ink); }
+h2 { font-size: var(--text-md); font-weight: 600; color: var(--color-ink); margin-bottom: var(--space-sm); }
+.meta { display: flex; gap: var(--space-md); color: var(--color-muted); margin-top: var(--space-2xs); }
+.muted { color: var(--color-muted); }
+.back { display: inline-flex; align-items: center; gap: var(--space-2xs); color: var(--color-muted); text-decoration: none; margin-bottom: var(--space-sm); }
+.back:hover { color: var(--color-ink); }
+
+/* Iconos */
+.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+/* Botones */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); height: 36px; padding-inline: var(--space-md); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); font-weight: 500; text-decoration: none; cursor: pointer; white-space: nowrap; transition: background-color var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out); }
+.btn:hover { background: var(--color-paper-2); }
+.btn:active { background: var(--color-paper-3); }
+.btn.pri { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-ink); }
+.btn.pri:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+.btn.pri:active { background: var(--color-ink); border-color: var(--color-ink); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--color-ink-2); }
+.btn.ghost:hover { background: var(--color-paper-2); }
+.btn.icon { width: 36px; padding: 0; }
+.btn.wide { width: 100%; height: 40px; }
+.btn[disabled], .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+
+/* Campos */
+.field { display: grid; gap: var(--space-2xs); }
+label, .label { color: var(--color-ink-2); font-weight: 500; }
+input, select, textarea { width: 100%; min-height: 36px; padding: var(--space-xs) var(--space-sm); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); }
+input:hover, select:hover, textarea:hover { border-color: var(--color-paper-3); }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 0; border-color: var(--color-focus); }
+textarea { resize: vertical; line-height: 1.6; }
+.field.err input { border-color: var(--color-error); }
+.err-msg { color: var(--color-error); }
+.search { position: relative; flex: 1; max-width: 320px; }
+.search .i { position: absolute; left: var(--space-sm); top: 10px; color: var(--color-muted); }
+.search input { padding-left: var(--space-xl); }
+
+/* Superficies */
+.panel { background: var(--color-surface); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-card); }
+.pad { padding: var(--space-lg); }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-lg); }
+.grid.side { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.grid.list { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+.form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-md) var(--space-lg); }
+.form .full { grid-column: 1 / -1; }
+.toolbar { display: flex; gap: var(--space-sm); align-items: center; padding: var(--space-md); border-bottom: var(--rule-hair) solid var(--color-rule); flex-wrap: wrap; }
+.row { display: flex; gap: var(--space-xs); align-items: center; flex-wrap: wrap; }
+
+/* Segmentado */
+.seg { display: inline-flex; padding: var(--space-3xs); background: var(--color-paper-2); border-radius: var(--radius-control); }
+.seg button { display: inline-flex; align-items: center; gap: var(--space-xs); height: 30px; padding-inline: var(--space-sm); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--color-ink-2); cursor: pointer; }
+.seg button:hover { color: var(--color-ink); }
+.seg button:active { background: var(--color-paper-3); }
+.seg button[aria-pressed="true"] { background: var(--color-surface); color: var(--color-ink); font-weight: 600; }
+
+/* Pestañas */
+.tabs { display: flex; gap: var(--space-lg); border-bottom: var(--rule-hair) solid var(--color-rule); margin-bottom: var(--space-lg); }
+.tabs a { padding-block: var(--space-sm); color: var(--color-muted); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs a:hover { color: var(--color-ink); }
+.tabs a[aria-current] { color: var(--color-ink); font-weight: 600; border-bottom-color: var(--color-accent); }
+
+/* Tablas */
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-weight: 500; color: var(--color-muted); padding: var(--space-sm) var(--space-md); border-bottom: var(--rule-hair) solid var(--color-rule); }
+td { padding: var(--space-sm) var(--space-md); border-bottom: var(--rule-hair) solid var(--color-rule); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--color-paper); }
+td.num { color: var(--color-ink-2); }
+.who { display: flex; align-items: center; gap: var(--space-sm); }
+.who a { color: var(--color-ink); text-decoration: none; font-weight: 500; }
+.who a:hover { text-decoration: underline; }
+tr.sel td { background: var(--color-accent-soft); }
+
+/* Etiquetas de estado */
+.tag { display: inline-flex; align-items: center; gap: var(--space-2xs); height: 24px; padding-inline: var(--space-xs); border-radius: var(--radius-pill); background: var(--color-paper-2); color: var(--color-ink-2); font-size: var(--text-xs); font-weight: 500; white-space: nowrap; }
+.tag .i { width: 12px; height: 12px; }
+.tag.ok { background: var(--color-success-soft); color: var(--color-success); }
+.tag.warn { background: var(--color-warn-soft); color: var(--color-warn); }
+.tag.err { background: var(--color-error-soft); color: var(--color-error); }
+.tag.accent { background: var(--color-accent-soft); color: var(--color-accent); }
+
+/* Datos */
+.dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-sm) var(--space-lg); margin: 0; }
+.dl dt { color: var(--color-muted); }
+.dl dd { margin: 0; color: var(--color-ink); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-md); }
+.stat b { display: block; font-size: var(--text-2xl); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--color-ink); }
+.stat.warn b { color: var(--color-warn); }
+.stat.err b { color: var(--color-error); }
+
+/* Nota */
+.original { padding: var(--space-md); background: var(--color-paper-2); border-radius: var(--radius-control); color: var(--color-ink-2); line-height: 1.6; }
+.section-label { display: block; font-weight: 600; color: var(--color-accent); margin: var(--space-md) 0 var(--space-2xs); }
+.section-label:first-child { margin-top: 0; }
+.soap textarea { min-height: 64px; }
+.summary { display: grid; gap: var(--space-xs); color: var(--color-ink-2); }
+.foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); padding: var(--space-md); border-top: var(--rule-hair) solid var(--color-rule); flex-wrap: wrap; }
+.note-list { list-style: none; margin: 0; padding: 0; }
+.note-list a { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); border-bottom: var(--rule-hair) solid var(--color-rule); text-decoration: none; color: var(--color-ink); }
+.note-list a:hover { background: var(--color-paper); }
+.note-list a[aria-current] { background: var(--color-accent-soft); }
+.note-list small { display: block; color: var(--color-muted); font-size: var(--text-xs); }
+details summary { cursor: pointer; color: var(--color-muted); }
+details summary:hover { color: var(--color-ink); }
+
+/* Gráfica */
+.legend { display: flex; gap: var(--space-lg); flex-wrap: wrap; color: var(--color-ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.swatch { width: 12px; height: 3px; border-radius: var(--radius-pill); }
+.chart-grid { stroke: var(--color-rule); }
+.chart-axis { fill: var(--color-muted); font-size: 11px; }
+.s1 { stroke: var(--color-accent); background: var(--color-accent); }
+.s2 { stroke: var(--color-chart-2); background: var(--color-chart-2); }
+.s3 { stroke: var(--color-chart-3); background: var(--color-chart-3); }
+
+/* Inicio de sesión */
+#login.on { display: grid; place-items: center; background: var(--color-paper); padding: var(--space-lg); }
+.auth { width: 100%; max-width: 360px; display: grid; gap: var(--space-md); }
+.auth .mark { font-size: var(--text-lg); margin-bottom: var(--space-md); }
+.or { display: flex; align-items: center; gap: var(--space-sm); color: var(--color-muted); }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--color-rule); }
+.logo { width: 18px; height: 18px; }
+.g-b { fill: var(--brand-google-blue); } .g-r { fill: var(--brand-google-red); } .g-y { fill: var(--brand-google-yellow); } .g-g { fill: var(--brand-google-green); }
+.m-r { fill: var(--brand-ms-red); } .m-g { fill: var(--brand-ms-green); } .m-b { fill: var(--brand-ms-blue); } .m-y { fill: var(--brand-ms-yellow); }
+
+@media (max-width: 60rem) {
+  .grid, .grid.side, .grid.list, .form { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 40rem) {
+  .bar { gap: var(--space-sm); }
+  .nav .lbl { display: none; }
+  .hide-sm { display: none; }
+  .main { padding-block: var(--space-lg); }
+  .search { max-width: none; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 17v4M17 19h4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></symbol>
+  <symbol id="i-archive" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+</svg>
+
+<!-- P01 Inicio de sesión -->
+<section class="screen" id="login">
+  <div class="auth">
+    <span class="mark">CogniSync</span>
+    <h1>Iniciar sesión</h1>
+    <button class="btn wide"><svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><path class="g-r" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path class="g-b" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path class="g-y" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path class="g-g" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Continuar con Google</button>
+    <button class="btn wide"><svg class="logo" viewBox="0 0 21 21" aria-hidden="true"><rect class="m-r" x="0" y="0" width="10" height="10"/><rect class="m-g" x="11" y="0" width="10" height="10"/><rect class="m-b" x="0" y="11" width="10" height="10"/><rect class="m-y" x="11" y="11" width="10" height="10"/></svg>Continuar con Microsoft</button>
+    <div class="or">o</div>
+    <div class="field"><label for="l-mail">Correo</label><input id="l-mail" type="email" value="dra.mendez@clinica-ejemplo.ec"></div>
+    <div class="field err"><label for="l-pass">Contraseña</label><input id="l-pass" type="password" value="contrasena"><span class="err-msg">Credenciales inválidas</span></div>
+    <a class="btn pri wide" href="#pacientes">Entrar</a>
+    <a class="back" style="justify-self:center;margin:0" href="#login">¿Olvidaste tu contraseña?</a>
+  </div>
+</section>
+
+<!-- P02 Mis pacientes -->
+<section class="screen" id="pacientes">
+  <header class="bar">
+    <a class="mark" href="#pacientes">CogniSync</a>
+    <nav class="nav"><a aria-current="page" href="#pacientes"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Pacientes</span></a><a href="#citas"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><span class="lbl">Agenda</span></a><a href="#evolucion"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg><span class="lbl">Evolución</span></a></nav>
+    <span class="avatar"><img src="img/laura.jpg" alt=""></span><a class="icon-link" href="#login" aria-label="Cerrar sesión"><svg class="i" aria-hidden="true"><use href="#i-logout"/></svg></a>
+  </header>
+  <main class="main">
+    <div class="head"><h1>Pacientes</h1><a class="btn pri" href="#nuevo-paciente"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Nuevo paciente</a></div>
+    <div class="panel">
+      <div class="toolbar">
+        <div class="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><input value="per" aria-label="Buscar paciente"></div>
+        <div class="seg"><button aria-pressed="true">Activos</button><button aria-pressed="false">Archivados</button></div>
+      </div>
+      <table>
+        <thead><tr><th>Paciente</th><th class="hide-sm">Última sesión</th><th class="hide-sm">Próxima cita</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr><td><div class="who"><span class="avatar"><img src="img/carlos.jpg" alt=""></span><a href="#expediente">Carlos Pérez Vera</a></div></td><td class="num hide-sm">2026-10-14</td><td class="num hide-sm">2026-11-05 10:00</td><td><span class="tag warn"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>Riesgo de deserción</span></td></tr>
+          <tr><td><div class="who"><span class="avatar"><img src="img/ana.jpg" alt=""></span><a href="#expediente">Ana Peralta Ruiz</a></div></td><td class="num hide-sm">2026-10-30</td><td class="num hide-sm">2026-11-06 15:00</td><td><span class="tag ok">Activo</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</section>
+
+<!-- P03 Crear expediente -->
+<section class="screen" id="nuevo-paciente">
+  <header class="bar">
+    <a class="mark" href="#pacientes">CogniSync</a>
+    <nav class="nav"><a aria-current="page" href="#pacientes"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Pacientes</span></a><a href="#citas"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><span class="lbl">Agenda</span></a><a href="#evolucion"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg><span class="lbl">Evolución</span></a></nav>
+    <span class="avatar"><img src="img/laura.jpg" alt=""></span><a class="icon-link" href="#login" aria-label="Cerrar sesión"><svg class="i" aria-hidden="true"><use href="#i-logout"/></svg></a>
+  </header>
+  <main class="main" style="max-width: 800px">
+    <a class="back" href="#pacientes"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg>Pacientes</a>
+    <div class="head"><h1>Nuevo paciente</h1></div>
+    <div class="panel pad">
+      <div class="form">
+        <div class="field"><label>Nombres</label><input value="Ana María"></div>
+        <div class="field"><label>Apellidos</label><input value="Peralta Ruiz"></div>
+        <div class="field"><label>Fecha de nacimiento</label><input type="date" value="1994-03-12"></div>
+        <div class="field"><label>Sexo</label><select><option>Femenino</option><option>Masculino</option></select></div>
+        <div class="field err"><label>Teléfono</label><input value=""><span class="err-msg">Obligatorio</span></div>
+        <div class="field"><label>Correo <span class="muted">(opcional)</span></label><input value="ana.peralta@correo-ejemplo.ec"></div>
+        <div class="field full"><label>Contacto de emergencia <span class="muted">(opcional)</span></label><input value="Rosa Ruiz, 09 8765 4321"></div>
+        <div class="field full"><label>Motivo de consulta</label><input value="Ansiedad e insomnio desde hace 3 meses"></div>
+        <div class="field full"><label>Antecedentes <span class="muted">(opcional)</span></label><textarea rows="3">Tratamiento psicológico previo en 2023, 6 sesiones.</textarea></div>
+        <div class="field full"><label>Consentimiento para procesamiento con IA</label><select><option>No otorgado</option><option selected>Otorgado el 2026-11-03</option></select></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top: var(--space-lg)"><a class="btn pri" href="#expediente">Guardar</a><a class="btn ghost" href="#pacientes">Cancelar</a></div>
+  </main>
+</section>
+
+<!-- P04 Expediente -->
+<section class="screen" id="expediente">
+  <header class="bar">
+    <a class="mark" href="#pacientes">CogniSync</a>
+    <nav class="nav"><a aria-current="page" href="#pacientes"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Pacientes</span></a><a href="#citas"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><span class="lbl">Agenda</span></a><a href="#evolucion"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg><span class="lbl">Evolución</span></a></nav>
+    <span class="avatar"><img src="img/laura.jpg" alt=""></span><a class="icon-link" href="#login" aria-label="Cerrar sesión"><svg class="i" aria-hidden="true"><use href="#i-logout"/></svg></a>
+  </header>
+  <main class="main">
+    <a class="back" href="#pacientes"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg>Pacientes</a>
+    <div class="head">
+      <div>
+        <div class="head-title"><h1>Carlos Pérez Vera</h1><span class="tag warn"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>2 inasistencias seguidas</span></div>
+        <div class="meta"><span>38 años</span><span>Estrés laboral</span></div>
+      </div>
+      <div class="row"><a class="btn icon" href="#nuevo-paciente" aria-label="Editar"><svg class="i" aria-hidden="true"><use href="#i-pencil"/></svg></a><button class="btn icon" aria-label="Archivar"><svg class="i" aria-hidden="true"><use href="#i-archive"/></svg></button><a class="btn pri" href="#nueva-nota"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Nueva nota</a></div>
+    </div>
+    <nav class="tabs"><a aria-current="page" href="#expediente">Resumen</a><a href="#citas">Citas</a><a href="#historial">Notas</a><a href="#evolucion">Evolución</a></nav>
+    <div class="grid">
+      <div class="panel pad">
+        <h2>Datos</h2>
+        <dl class="dl">
+          <dt>Nacimiento</dt><dd class="num">1988-07-02</dd>
+          <dt>Teléfono</dt><dd class="num">09 9123 4567</dd>
+          <dt>Emergencia</dt><dd>María Vera, 09 9876 5432</dd>
+          <dt>Motivo</dt><dd>Estrés laboral y ataques de pánico</dd>
+        </dl>
+      </div>
+      <div class="panel pad">
+        <h2>Asistencia, últimos 60 días</h2>
+        <div class="stats">
+          <div class="stat"><b>5</b><span class="muted">Asistidas</span></div>
+          <div class="stat warn"><b>1</b><span class="muted">Canceladas</span></div>
+          <div class="stat err"><b>2</b><span class="muted">Inasistencias</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="muted" style="margin-top: var(--space-md)">Editado el 2026-10-14 por Laura Méndez</p>
+  </main>
+</section>
+
+<!-- P05 Citas -->
+<section class="screen" id="citas">
+  <header class="bar">
+    <a class="mark" href="#pacientes">CogniSync</a>
+    <nav class="nav"><a href="#pacientes"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Pacientes</span></a><a aria-current="page" href="#citas"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><span class="lbl">Agenda</span></a><a href="#evolucion"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg><span class="lbl">Evolución</span></a></nav>
+    <span class="avatar"><img src="img/laura.jpg" alt=""></span><a class="icon-link" href="#login" aria-label="Cerrar sesión"><svg class="i" aria-hidden="true"><use href="#i-logout"/></svg></a>
+  </header>
+  <main class="main">
+    <a class="back" href="#expediente"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg>Carlos Pérez Vera</a>
+    <div class="head"><h1>Citas</h1><button class="btn pri"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Nueva cita</button></div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Fecha</th><th>Hora</th><th class="hide-sm">Duración</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr><td class="num">2026-11-05</td><td class="num">10:00</td><td class="num hide-sm">50 min</td><td><span class="tag accent">Programada</span></td></tr>
+          <tr><td class="num">2026-10-28</td><td class="num">10:00</td><td class="num hide-sm">50 min</td><td><select aria-label="Estado" style="max-width: 160px"><option>Inasistencia</option><option>Asistida</option><option>Cancelada</option></select></td></tr>
+          <tr><td class="num">2026-10-21</td><td class="num">10:00</td><td class="num hide-sm">50 min</td><td><span class="tag err">Inasistencia</span></td></tr>
+          <tr><td class="num">2026-10-14</td><td class="num">10:00</td><td class="num hide-sm">50 min</td><td><span class="tag ok">Asistida</span></td></tr>
+          <tr><td class="num">2026-10-07</td><td class="num">10:00</td><td class="num hide-sm">50 min</td><td><span class="tag">Cancelada</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</section>
+
+<!-- P06 Nueva nota -->
+<section class="screen" id="nueva-nota">
+  <header class="bar">
+    <a class="mark" href="#pacientes">CogniSync</a>
+    <nav class="nav"><a aria-current="page" href="#pacientes"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Pacientes</span></a><a href="#citas"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><span class="lbl">Agenda</span></a><a href="#evolucion"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg><span class="lbl">Evolución</span></a></nav>
+    <span class="avatar"><img src="img/laura.jpg" alt=""></span><a class="icon-link" href="#login" aria-label="Cerrar sesión"><svg class="i" aria-hidden="true"><use href="#i-logout"/></svg></a>
+  </header>
+  <main class="main">
+    <a class="back" href="#expediente"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg>Ana Peralta Ruiz</a>
+    <div class="head"><h1>Nota del 2026-11-03</h1><span class="tag"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Borrador guardado</span></div>
+    <div class="grid side">
+      <div class="panel">
+        <div class="toolbar"><div class="seg"><button aria-pressed="true"><svg class="i" aria-hidden="true"><use href="#i-type"/></svg>Texto</button><button aria-pressed="false"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>Voz</button><button aria-pressed="false"><svg class="i" aria-hidden="true"><use href="#i-image"/></svg>Foto</button></div></div>
+        <div class="pad"><textarea rows="9" aria-label="Apuntes de la sesión">Llega puntual con el registro de sueño: 4 a 5 horas, 3 noches con insomnio. El lunes tuvo un ataque de pánico en el bus, de unos 10 minutos. Ánimo 5/10. Se trabajó la reestructuración de pensamientos catastróficos. Tarea: seguir el registro y practicar respiración 2 veces al día.</textarea></div>
+        <div class="foot"><span class="muted num">318 / 5000</span><div class="row"><select aria-label="Formato" style="width: auto"><option>SOAP</option><option>DAP</option></select><a class="btn pri" href="#revision"><svg class="i" aria-hidden="true"><use href="#i-sparkle"/></svg>Estructurar</a></div></div>
+      </div>
+      <aside class="panel pad">
+        <h2>Sesión anterior</h2>
+        <p class="muted num" style="margin-bottom: var(--space-sm)">2026-10-30</p>
+        <div class="summary"><p>Insomnio de conciliación 4 noches por semana.</p><p>Menos ansiedad en el trabajo.</p><p>Practicó respiración diafragmática.</p><p>Tarea: registro de sueño diario.</p></div>
+      </aside>
+    </div>
+  </main>
+</section>
+
+<!-- P07 Revisar y aprobar -->
+<section class="screen" id="revision">
+  <header class="bar">
+    <a class="mark" href="#pacientes">CogniSync</a>
+    <nav class="nav"><a aria-current="page" href="#pacientes"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Pacientes</span></a><a href="#citas"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><span class="lbl">Agenda</span></a><a href="#evolucion"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg><span class="lbl">Evolución</span></a></nav>
+    <span class="avatar"><img src="img/laura.jpg" alt=""></span><a class="icon-link" href="#login" aria-label="Cerrar sesión"><svg class="i" aria-hidden="true"><use href="#i-logout"/></svg></a>
+  </header>
+  <main class="main">
+    <a class="back" href="#nueva-nota"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg>Ana Peralta Ruiz</a>
+    <div class="head">
+      <div class="head-title"><h1>Revisar nota</h1><span class="tag">Borrador</span></div>
+      <div class="row"><button class="btn">Guardar</button><a class="btn pri" href="#historial"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Aprobar</a></div>
+    </div>
+    <div class="grid list">
+      <div class="panel pad">
+        <h2>Original</h2>
+        <p class="original">Llega puntual con el registro de sueño: 4 a 5 horas, 3 noches con insomnio. El lunes tuvo un ataque de pánico en el bus, de unos 10 minutos. Ánimo 5/10. Se trabajó la reestructuración de pensamientos catastróficos. Tarea: seguir el registro y practicar respiración 2 veces al día.</p>
+        <h2 style="margin-top: var(--space-lg)">Síntomas</h2>
+        <div class="row">
+          <span class="tag accent">Insomnio 6/10<svg class="i" aria-hidden="true"><use href="#i-x"/></svg></span>
+          <span class="tag accent">Pánico 7/10<svg class="i" aria-hidden="true"><use href="#i-x"/></svg></span>
+          <span class="tag accent">Ánimo bajo 5/10<svg class="i" aria-hidden="true"><use href="#i-x"/></svg></span>
+          <button class="btn ghost icon" aria-label="Agregar síntoma"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+        </div>
+      </div>
+      <div class="panel pad soap">
+        <label class="section-label" for="s-s">Subjetivo</label><textarea id="s-s">3 noches con insomnio, 4 a 5 horas de sueño. Un ataque de pánico de 10 minutos en el bus. Ánimo 5/10.</textarea>
+        <label class="section-label" for="s-o">Objetivo</label><textarea id="s-o">Llega puntual. Registro de sueño completo.</textarea>
+        <label class="section-label" for="s-a">Análisis</label><textarea id="s-a">Persisten el insomnio y las crisis de pánico, con mejor adherencia a las tareas.</textarea>
+        <label class="section-label" for="s-p">Plan</label><textarea id="s-p">Seguir el registro de sueño. Respiración diafragmática 2 veces al día. Reestructuración cognitiva en la próxima sesión.</textarea>
+      </div>
+    </div>
+  </main>
+</section>
+
+<!-- P08 Historial de notas -->
+<section class="screen" id="historial">
+  <header class="bar">
+    <a class="mark" href="#pacientes">CogniSync</a>
+    <nav class="nav"><a aria-current="page" href="#pacientes"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Pacientes</span></a><a href="#citas"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><span class="lbl">Agenda</span></a><a href="#evolucion"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg><span class="lbl">Evolución</span></a></nav>
+    <span class="avatar"><img src="img/laura.jpg" alt=""></span><a class="icon-link" href="#login" aria-label="Cerrar sesión"><svg class="i" aria-hidden="true"><use href="#i-logout"/></svg></a>
+  </header>
+  <main class="main">
+    <a class="back" href="#expediente"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg>Ana Peralta Ruiz</a>
+    <div class="head"><h1>Notas</h1><a class="btn pri" href="#nueva-nota"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Nueva nota</a></div>
+    <div class="grid list">
+      <div class="panel">
+        <ul class="note-list">
+          <li><a aria-current="true" href="#historial"><span class="num">2026-11-03<small>SOAP</small></span><span class="tag ok">Aprobada</span></a></li>
+          <li><a href="#historial"><span class="num">2026-10-30<small>SOAP</small></span><span class="tag ok">Aprobada</span></a></li>
+          <li><a href="#historial"><span class="num">2026-10-23<small>DAP</small></span><span class="tag ok">Aprobada</span></a></li>
+          <li><a href="#historial"><span class="num">2026-10-16<small>SOAP</small></span><span class="tag">Borrador</span></a></li>
+        </ul>
+      </div>
+      <article class="panel pad">
+        <div class="head" style="margin-bottom: var(--space-md)"><div><h2 style="margin: 0">2026-11-03</h2><span class="muted">Aprobada a las 17:42</span></div><button class="btn"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Adenda</button></div>
+        <span class="section-label">Subjetivo</span><p>3 noches con insomnio, 4 a 5 horas de sueño. Un ataque de pánico de 10 minutos en el bus. Ánimo 5/10.</p>
+        <span class="section-label">Objetivo</span><p>Llega puntual. Registro de sueño completo.</p>
+        <span class="section-label">Análisis</span><p>Persisten el insomnio y las crisis de pánico, con mejor adherencia a las tareas.</p>
+        <span class="section-label">Plan</span><p>Seguir el registro de sueño. Respiración 2 veces al día.</p>
+        <details style="margin-top: var(--space-lg)"><summary>Texto original</summary><p class="original" style="margin-top: var(--space-xs)">Llega puntual con el registro de sueño: 4 a 5 horas, 3 noches con insomnio.</p></details>
+      </article>
+    </div>
+  </main>
+</section>
+
+<!-- P09 Evolución -->
+<section class="screen" id="evolucion">
+  <header class="bar">
+    <a class="mark" href="#pacientes">CogniSync</a>
+    <nav class="nav"><a href="#pacientes"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Pacientes</span></a><a href="#citas"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><span class="lbl">Agenda</span></a><a aria-current="page" href="#evolucion"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg><span class="lbl">Evolución</span></a></nav>
+    <span class="avatar"><img src="img/laura.jpg" alt=""></span><a class="icon-link" href="#login" aria-label="Cerrar sesión"><svg class="i" aria-hidden="true"><use href="#i-logout"/></svg></a>
+  </header>
+  <main class="main">
+    <a class="back" href="#expediente"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg>Ana Peralta Ruiz</a>
+    <div class="head"><h1>Evolución</h1><div class="seg"><button aria-pressed="false">1 mes</button><button aria-pressed="true">3 meses</button><button aria-pressed="false">6 meses</button></div></div>
+    <div class="panel pad">
+      <div class="legend" style="margin-bottom: var(--space-md)"><span><i class="swatch s1"></i>Insomnio</span><span><i class="swatch s2"></i>Pánico</span><span><i class="swatch s3"></i>Ánimo bajo</span></div>
+      <svg viewBox="0 0 760 280" width="100%" role="img" aria-label="Intensidad de síntomas de agosto a noviembre">
+        <g class="chart-grid"><line x1="40" y1="20" x2="750" y2="20"/><line x1="40" y1="120" x2="750" y2="120"/><line x1="40" y1="220" x2="750" y2="220"/></g>
+        <g class="chart-axis"><text x="16" y="24">10</text><text x="22" y="124">5</text><text x="22" y="224">0</text>
+          <text x="56" y="250">ago 07</text><text x="166" y="250">ago 21</text><text x="276" y="250">sep 04</text><text x="386" y="250">sep 25</text><text x="496" y="250">oct 16</text><text x="606" y="250">oct 30</text><text x="700" y="250">nov 03</text></g>
+        <polyline class="s1" fill="none" stroke-width="2.5" stroke-linejoin="round" points="75,60 185,60 295,80 405,100 515,100 625,120 715,100"/>
+        <polyline class="s2" fill="none" stroke-width="2.5" stroke-linejoin="round" points="75,40 185,60 295,60 405,100 515,120 625,140 715,80"/>
+        <polyline class="s3" fill="none" stroke-width="2.5" stroke-linejoin="round" points="75,80 185,100 295,100 405,120 515,120 625,140 715,120"/>
+      </svg>
+    </div>
+  </main>
+</section>
+
+<!-- P10 Usuarios (administrador) -->
+<section class="screen" id="usuarios">
+  <header class="bar">
+    <a class="mark" href="#usuarios">CogniSync</a>
+    <nav class="nav"><a aria-current="page" href="#usuarios"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Usuarios</span></a></nav>
+    <span class="avatar"><img src="img/jorge.jpg" alt=""></span><a class="icon-link" href="#login" aria-label="Cerrar sesión"><svg class="i" aria-hidden="true"><use href="#i-logout"/></svg></a>
+  </header>
+  <main class="main" style="max-width: 880px">
+    <div class="head"><h1>Usuarios</h1></div>
+    <div class="panel">
+      <div class="toolbar" style="align-items: flex-start">
+        <div class="field" style="flex: 1; min-width: 200px"><input class="" value="lmendez@clinica-ejemplo.ec" aria-label="Correo" style="border-color: var(--color-error)"><span class="err-msg">Este correo ya está registrado</span></div>
+        <select aria-label="Rol" style="width: auto"><option>Terapeuta</option><option>Administrador</option></select>
+        <button class="btn pri"><svg class="i" aria-hidden="true"><use href="#i-user-plus"/></svg>Agregar</button>
+      </div>
+      <table>
+        <thead><tr><th>Nombre</th><th>Rol</th><th>Estado</th><th><span class="visually-hidden">Acciones</span></th></tr></thead>
+        <tbody>
+          <tr><td><div class="who"><span class="avatar"><img src="img/laura.jpg" alt=""></span><span>Laura Méndez<br><span class="muted">lmendez@clinica-ejemplo.ec</span></span></div></td><td>Terapeuta</td><td><span class="tag ok">Activo</span></td><td><button class="btn ghost icon" aria-label="Más acciones"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></td></tr>
+          <tr><td><div class="who"><span class="avatar"><img src="img/pablo.jpg" alt=""></span><span>Pablo Cedeño<br><span class="muted">pcedeno@clinica-ejemplo.ec</span></span></div></td><td>Terapeuta</td><td><span class="tag ok">Activo</span></td><td><button class="btn ghost icon" aria-label="Más acciones"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></td></tr>
+          <tr><td><div class="who"><span class="avatar"><img src="img/sofia.jpg" alt=""></span><span>Sofía Andrade<br><span class="muted">sandrade@clinica-ejemplo.ec</span></span></div></td><td>Terapeuta</td><td><span class="tag">Desactivado</span></td><td><button class="btn ghost icon" aria-label="Más acciones"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</section>
+
+<script>
+  function show() {
+    var id = (location.hash || '#login').slice(1);
+    var found = false;
+    document.querySelectorAll('.screen').forEach(function (s) { var on = s.id === id; s.classList.toggle('on', on); if (on) found = true; });
+    if (!found) document.getElementById('login').classList.add('on');
+  }
+  window.addEventListener('hashchange', show); show();
+</script>
+</body>
+</html>

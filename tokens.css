@@ -1,0 +1,30 @@
+:root {
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
+  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.2rem; --text-xl: 1.44rem; --text-2xl: 1.728rem; --text-3xl: 2.074rem;
+  --text-display-s: 1.44rem; --text-display: 1.728rem; --text-section: 1.2rem; --text-title: 1rem; --text-lead: 1rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --container: 1200px; --gutter: 32px; --gap-columns: 24px; --section-gap-s: 120px; --section-gap: 144px; --section-gap-l: 176px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+
+  /* Papel cálido, tinta pizarra, un solo acento verde azulado */
+  --color-paper: oklch(98.6% 0.004 95); --color-paper-2: oklch(96.4% 0.005 95); --color-paper-3: oklch(93.5% 0.006 95);
+  --color-surface: oklch(100% 0 0);
+  --color-ink: oklch(23% 0.014 250); --color-ink-2: oklch(38% 0.012 250); --color-muted: oklch(50% 0.01 250);
+  --color-rule: oklch(90.5% 0.006 95);
+  --color-accent: oklch(44% 0.075 190); --color-accent-hover: oklch(38% 0.07 190); --color-accent-ink: oklch(99% 0 0);
+  --color-accent-soft: oklch(95% 0.02 190); --color-focus: oklch(55% 0.11 190);
+  --color-warn: oklch(47% 0.12 55); --color-warn-soft: oklch(95.5% 0.03 70);
+  --color-error: oklch(50% 0.19 27); --color-error-soft: oklch(96.5% 0.02 27);
+  --color-success: oklch(45% 0.1 150); --color-success-soft: oklch(95.5% 0.03 150);
+  --color-chart-2: oklch(58% 0.12 55); --color-chart-3: oklch(55% 0.06 270);
+
+  /* Marcas de terceros: solo en sus logos */
+  --brand-google-blue: #4285F4; --brand-google-red: #EA4335; --brand-google-yellow: #FBBC05; --brand-google-green: #34A853;
+  --brand-ms-red: #F25022; --brand-ms-green: #7FBA00; --brand-ms-blue: #00A4EF; --brand-ms-yellow: #FFB900;
+
+  --font-display: "Segoe UI Variable Display", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif; --font-outlier: var(--font-body);
+  --radius-card: 8px; --radius-control: 6px; --radius-pill: 999px; --rule-hair: 1px; --shadow-card: none;
+  --tracking-display: -0.01em;
+}
